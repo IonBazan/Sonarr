@@ -1069,21 +1069,24 @@ namespace NzbDrone.Core.Parser
                     }
                 }
 
-                // If more than 1 season was parsed set IsMultiSeason to true so it can be rejected later
-                if (seasons.Distinct().Count() > 1)
-                {
-                    result.IsMultiSeason = true;
-                }
+                var distinctSeasons = seasons.Distinct().OrderBy(s => s).ToList();
 
-                if (seasons.Any())
+                if (distinctSeasons.Count > 1)
                 {
-                    // If at least one season was parsed use the first season as the season
-                    result.SeasonNumber = seasons.First();
+                    // The multi-season regex only captures the endpoints of the range (e.g. S01-S05 -> 1, 5).
+                    // Contiguous ranges only; non-contiguous packs are intentionally unsupported, same as we
+                    // don't support a single episode file with episodes that aren't contiguous.
+                    result.SeasonNumbers = Enumerable.Range(distinctSeasons.First(), distinctSeasons.Last() - distinctSeasons.First() + 1).ToArray();
+                }
+                else if (distinctSeasons.Count == 1)
+                {
+                    // If at least one season was parsed use it as the season
+                    result.SeasonNumbers = new[] { distinctSeasons[0] };
                 }
                 else if (!result.AbsoluteEpisodeNumbers.Any() && result.EpisodeNumbers.Any())
                 {
                     // If no season was found and it's not an absolute only release it should be treated as a mini series and season 1
-                    result.SeasonNumber = 1;
+                    result.SeasonNumbers = new[] { 1 };
                     result.IsMiniSeries = true;
                 }
             }

@@ -32,7 +32,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.Search.SingleEpisodeSearchMatch
         [Test]
         public void should_return_false_if_season_does_not_match()
         {
-            _remoteEpisode.ParsedEpisodeInfo.SeasonNumber = 10;
+            _remoteEpisode.ParsedEpisodeInfo.SeasonNumbers = new[] { 10 };
             _remoteEpisode.MappedSeasonNumber = 10;
 
             Subject.IsSatisfiedBy(_remoteEpisode, _information).Accepted.Should().BeFalse();
@@ -41,7 +41,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.Search.SingleEpisodeSearchMatch
         [Test]
         public void should_return_true_if_season_matches_after_scenemapping()
         {
-            _remoteEpisode.ParsedEpisodeInfo.SeasonNumber = 10;
+            _remoteEpisode.ParsedEpisodeInfo.SeasonNumbers = new[] { 10 };
             _remoteEpisode.MappedSeasonNumber = 5; // 10 -> 5 mapping
             _searchCriteria.SeasonNumber = 10; // searching by tvdb 5 = 10 scene
 
@@ -51,7 +51,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.Search.SingleEpisodeSearchMatch
         [Test]
         public void should_return_false_if_season_does_not_match_after_scenemapping()
         {
-            _remoteEpisode.ParsedEpisodeInfo.SeasonNumber = 10;
+            _remoteEpisode.ParsedEpisodeInfo.SeasonNumbers = new[] { 10 };
             _remoteEpisode.MappedSeasonNumber = 6; // 9 -> 5 mapping
             _searchCriteria.SeasonNumber = 9; // searching by tvdb 5 = 9 scene
 

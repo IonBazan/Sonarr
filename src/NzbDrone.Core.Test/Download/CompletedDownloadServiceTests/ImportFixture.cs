@@ -270,6 +270,66 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         }
 
         [Test]
+        public void should_mark_as_imported_if_all_episodes_across_multiple_seasons_were_imported()
+        {
+            var season1Episode = new Episode { Id = 1, SeasonNumber = 1 };
+            var season2Episode = new Episode { Id = 2, SeasonNumber = 2 };
+            var season3Episode = new Episode { Id = 3, SeasonNumber = 3 };
+            _trackedDownload.RemoteEpisode.Episodes = new List<Episode> { season1Episode, season2Episode, season3Episode };
+
+            Mocker.GetMock<IDownloadedEpisodesImportService>()
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Series>(), It.IsAny<DownloadClientItem>()))
+                  .Returns(new List<ImportResult>
+                           {
+                               new ImportResult(
+                                   new ImportDecision(
+                                       new LocalEpisode { Path = @"C:\TestPath\Droned.S01E01.mkv", Episodes = new List<Episode> { season1Episode } })),
+
+                               new ImportResult(
+                                   new ImportDecision(
+                                       new LocalEpisode { Path = @"C:\TestPath\Droned.S02E01.mkv", Episodes = new List<Episode> { season2Episode } })),
+
+                               new ImportResult(
+                                   new ImportDecision(
+                                       new LocalEpisode { Path = @"C:\TestPath\Droned.S03E01.mkv", Episodes = new List<Episode> { season3Episode } }))
+                           });
+
+            Subject.Import(_trackedDownload);
+
+            AssertImported();
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_until_every_season_in_a_multi_season_pack_is_imported()
+        {
+            var season1Episode = new Episode { Id = 1, SeasonNumber = 1 };
+            var season2Episode = new Episode { Id = 2, SeasonNumber = 2 };
+            var season3Episode = new Episode { Id = 3, SeasonNumber = 3 };
+            _trackedDownload.RemoteEpisode.Episodes = new List<Episode> { season1Episode, season2Episode, season3Episode };
+
+            Mocker.GetMock<IDownloadedEpisodesImportService>()
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Series>(), It.IsAny<DownloadClientItem>()))
+                  .Returns(new List<ImportResult>
+                           {
+                               new ImportResult(
+                                   new ImportDecision(
+                                       new LocalEpisode { Path = @"C:\TestPath\Droned.S01E01.mkv", Episodes = new List<Episode> { season1Episode } })),
+
+                               new ImportResult(
+                                   new ImportDecision(
+                                       new LocalEpisode { Path = @"C:\TestPath\Droned.S02E01.mkv", Episodes = new List<Episode> { season2Episode } }))
+                           });
+
+            Mocker.GetMock<IHistoryService>()
+                  .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
+                  .Returns(new List<EpisodeHistory>());
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+        }
+
+        [Test]
         public void should_mark_as_imported_if_all_episodes_were_imported_including_history()
         {
             var episode1 = new Episode { Id = 1 };

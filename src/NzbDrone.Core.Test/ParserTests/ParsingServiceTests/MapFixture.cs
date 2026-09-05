@@ -277,7 +277,7 @@ namespace NzbDrone.Core.Test.ParserTests.ParsingServiceTests
         [Test]
         public void should_not_use_scene_season_number_from_xem_mapping_if_alias_matches_a_specific_season_number_but_did_not_parse_season_1()
         {
-            _parsedEpisodeInfo.SeasonNumber = 2;
+            _parsedEpisodeInfo.SeasonNumbers = new[] { 2 };
 
             var sceneMapping = new SceneMapping
             {

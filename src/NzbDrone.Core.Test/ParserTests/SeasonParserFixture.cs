@@ -1,3 +1,4 @@
+using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.Test.Framework;
@@ -102,15 +103,15 @@ namespace NzbDrone.Core.Test.ParserTests
             result.SeasonPart.Should().Be(seasonPart);
         }
 
-        [TestCase("The Series S01-05 WS BDRip X264-REWARD-No Rars", "The Series", 1)]
-        [TestCase("Series.Title.S01-S09.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb", "Series Title", 1)]
-        [TestCase("Series Title S01 - S07 BluRay 1080p x264 REPACK -SacReD", "Series Title", 1)]
-        [TestCase("Series Title Season 01-07 BluRay 1080p x264 REPACK -SacReD", "Series Title", 1)]
-        [TestCase("Series Title Season 01 - Season 07 BluRay 1080p x264 REPACK -SacReD", "Series Title", 1)]
-        [TestCase("Series Title Complete Series S01 S04 (1080p BluRay x265 HEVC 10bit AAC 5.1 Vyndros)", "Series Title", 1)]
-        [TestCase("Series Title S01 S04 (1080p BluRay x265 HEVC 10bit AAC 5.1 Vyndros)", "Series Title", 1)]
-        [TestCase("Series Title S01 04 (1080p BluRay x265 HEVC 10bit AAC 5.1 Vyndros)", "Series Title", 1)]
-        public void should_parse_multi_season_release(string postTitle, string title, int firstSeason)
+        [TestCase("The Series S01-05 WS BDRip X264-REWARD-No Rars", "The Series", 1, 5)]
+        [TestCase("Series.Title.S01-S09.1080p.AMZN.WEB-DL.DDP2.0.H.264-NTb", "Series Title", 1, 9)]
+        [TestCase("Series Title S01 - S07 BluRay 1080p x264 REPACK -SacReD", "Series Title", 1, 7)]
+        [TestCase("Series Title Season 01-07 BluRay 1080p x264 REPACK -SacReD", "Series Title", 1, 7)]
+        [TestCase("Series Title Season 01 - Season 07 BluRay 1080p x264 REPACK -SacReD", "Series Title", 1, 7)]
+        [TestCase("Series Title Complete Series S01 S04 (1080p BluRay x265 HEVC 10bit AAC 5.1 Vyndros)", "Series Title", 1, 4)]
+        [TestCase("Series Title S01 S04 (1080p BluRay x265 HEVC 10bit AAC 5.1 Vyndros)", "Series Title", 1, 4)]
+        [TestCase("Series Title S01 04 (1080p BluRay x265 HEVC 10bit AAC 5.1 Vyndros)", "Series Title", 1, 4)]
+        public void should_parse_multi_season_release(string postTitle, string title, int firstSeason, int lastSeason)
         {
             var result = Parser.Parser.ParseTitle(postTitle);
             result.SeasonNumber.Should().Be(firstSeason);
@@ -120,6 +121,16 @@ namespace NzbDrone.Core.Test.ParserTests
             result.FullSeason.Should().BeTrue();
             result.IsPartialSeason.Should().BeFalse();
             result.IsMultiSeason.Should().BeTrue();
+            result.SeasonNumbers.Should().Equal(Enumerable.Range(firstSeason, lastSeason - firstSeason + 1));
+        }
+
+        [TestCase("30.Series.Season.04.HDTV.XviD-DIMENSION", 4)]
+        [TestCase("Sonarr.and.Series.S02.720p.x264-DIMENSION", 2)]
+        public void should_not_be_multi_season_for_a_single_season_release(string postTitle, int season)
+        {
+            var result = Parser.Parser.ParseTitle(postTitle);
+            result.IsMultiSeason.Should().BeFalse();
+            result.SeasonNumbers.Should().Equal(season);
         }
 
         [Test]

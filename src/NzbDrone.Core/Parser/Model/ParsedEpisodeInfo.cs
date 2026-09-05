@@ -13,7 +13,26 @@ namespace NzbDrone.Core.Parser.Model
         public string SeriesTitle { get; set; }
         public SeriesTitleInfo SeriesTitleInfo { get; set; }
         public QualityModel Quality { get; set; }
-        public int SeasonNumber { get; set; }
+
+        // Declared before SeasonNumber: System.Text.Json (used by EmbeddedDocumentConverter for
+        // PendingReleases) serializes/deserializes in declaration order, so on new JSON the array
+        // is populated first and the legacy SeasonNumber setter below becomes a no-op.
+        public int[] SeasonNumbers { get; set; } = Array.Empty<int>();
+
+        // Facade kept for the handful of assignment sites in Parser.cs, the API resources and legacy JSON.
+        public int SeasonNumber
+        {
+            get => SeasonNumbers.Length > 0 ? SeasonNumbers[0] : 0;
+
+            set
+            {
+                if (SeasonNumbers.Length == 0 && value != 0)
+                {
+                    SeasonNumbers = new[] { value };
+                }
+            }
+        }
+
         public int[] EpisodeNumbers { get; set; }
         public int[] AbsoluteEpisodeNumbers { get; set; }
         public decimal[] SpecialAbsoluteEpisodeNumbers { get; set; }
@@ -21,7 +40,7 @@ namespace NzbDrone.Core.Parser.Model
         public List<Language> Languages { get; set; }
         public bool FullSeason { get; set; }
         public bool IsPartialSeason { get; set; }
-        public bool IsMultiSeason { get; set; }
+        public bool IsMultiSeason => SeasonNumbers.Length > 1;
         public bool IsSeasonExtra { get; set; }
         public bool IsSplitEpisode { get; set; }
         public bool IsMiniSeries { get; set; }
@@ -124,7 +143,9 @@ namespace NzbDrone.Core.Parser.Model
             }
             else if (FullSeason)
             {
-                episodeString = string.Format("Season {0:00}", SeasonNumber);
+                episodeString = IsMultiSeason
+                    ? string.Format("Season {0:00}-{1:00}", SeasonNumbers.First(), SeasonNumbers.Last())
+                    : string.Format("Season {0:00}", SeasonNumber);
             }
             else if (EpisodeNumbers != null && EpisodeNumbers.Any())
             {

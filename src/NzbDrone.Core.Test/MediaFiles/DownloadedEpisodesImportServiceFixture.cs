@@ -500,9 +500,10 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
-        public void should_reject_if_download_is_multi_season()
+        public void should_process_video_files_if_download_is_multi_season()
         {
             GivenValidSeries();
+            GivenSuccessfulImport();
 
             _trackedDownload.DownloadItem.Title = "Series Title S01-S11";
 
@@ -511,19 +512,15 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IDiskProvider>().Setup(c => c.FolderExists(folderName))
                 .Returns(true);
 
-            var result = Subject.ProcessPath(folderName, ImportMode.Auto, _trackedDownload.RemoteEpisode.Series, _trackedDownload.DownloadItem);
-
-            result.Count.Should().Be(1);
-            result.First().Result.Should().Be(ImportResultType.Rejected);
-            result.First().ImportDecision.Rejections.First().Reason.Should().Be(ImportRejectionReason.MultiSeason);
-
-            Mocker.GetMock<IParsingService>().Setup(c => c.GetSeries("foldername")).Returns((Series)null);
+            Subject.ProcessPath(folderName, ImportMode.Auto, _trackedDownload.RemoteEpisode.Series, _trackedDownload.DownloadItem);
 
             Mocker.GetMock<IMakeImportDecision>()
-                .Verify(c => c.GetImportDecisions(It.IsAny<List<string>>(), It.IsAny<Series>(), It.IsAny<DownloadClientItem>(), It.IsAny<ParsedEpisodeInfo>(), It.IsAny<ParsedEpisodeInfo>(), It.IsAny<bool>(), true),
-                    Times.Never());
+                .Verify(c => c.GetImportDecisions(It.IsAny<List<string>>(), It.IsAny<Series>(), _trackedDownload.DownloadItem, It.IsAny<ParsedEpisodeInfo>(), It.IsAny<ParsedEpisodeInfo>(), true),
+                    Times.Once());
 
-            VerifyNoImport();
+            Mocker.GetMock<IImportApprovedEpisodes>()
+                .Verify(c => c.Import(It.IsAny<List<ImportDecision>>(), true, _trackedDownload.DownloadItem, ImportMode.Auto),
+                    Times.Once());
         }
 
         private void VerifyNoImport()

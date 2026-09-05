@@ -57,10 +57,16 @@ namespace NzbDrone.Core.Queue
 
         private Queue MapQueueItem(TrackedDownload trackedDownload, List<Episode> episodes)
         {
+            var seasonNumbers = episodes.Any()
+                ? episodes.Select(e => e.SeasonNumber).Distinct().OrderBy(s => s).ToList()
+                : trackedDownload.RemoteEpisode?.MappedSeasonNumber is { } mappedSeasonNumber
+                    ? new List<int> { mappedSeasonNumber }
+                    : new List<int>();
+
             var queue = new Queue
             {
                 Series = trackedDownload.RemoteEpisode?.Series,
-                SeasonNumber = trackedDownload.RemoteEpisode?.MappedSeasonNumber,
+                SeasonNumbers = seasonNumbers,
                 Episodes = episodes,
                 Languages = trackedDownload.RemoteEpisode?.Languages ?? new List<Language> { Language.Unknown },
                 Quality = trackedDownload.RemoteEpisode?.ParsedEpisodeInfo.Quality ?? new QualityModel(Quality.Unknown),
