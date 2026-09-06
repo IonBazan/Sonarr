@@ -134,6 +134,30 @@ namespace NzbDrone.Core.Test.ParserTests
         }
 
         [Test]
+        public void should_only_capture_the_first_two_season_markers_when_more_than_two_are_listed()
+        {
+            var result = Parser.Parser.ParseTitle("Show S01 S02 S03 S04");
+            result.SeriesTitle.Should().Be("Show");
+            result.EpisodeNumbers.Should().BeEmpty();
+            result.AbsoluteEpisodeNumbers.Should().BeEmpty();
+            result.FullSeason.Should().BeTrue();
+            result.IsMultiSeason.Should().BeTrue();
+            result.SeasonNumbers.Should().Equal(1, 2);
+        }
+
+        [Test]
+        public void should_treat_a_season_list_with_a_gap_as_a_contiguous_range()
+        {
+            var result = Parser.Parser.ParseTitle("Show S01 S03 S04");
+            result.SeriesTitle.Should().Be("Show");
+            result.EpisodeNumbers.Should().BeEmpty();
+            result.AbsoluteEpisodeNumbers.Should().BeEmpty();
+            result.FullSeason.Should().BeTrue();
+            result.IsMultiSeason.Should().BeTrue();
+            result.SeasonNumbers.Should().Equal(1, 2, 3);
+        }
+
+        [Test]
         public void should_not_parse_season_folders()
         {
             var result = Parser.Parser.ParseTitle("Season 3");
