@@ -133,28 +133,38 @@ namespace NzbDrone.Core.Test.ParserTests
             result.SeasonNumbers.Should().Equal(season);
         }
 
-        [Test]
-        public void should_only_capture_the_first_two_season_markers_when_more_than_two_are_listed()
+        [TestCase("Series Title S01 S02 S03 S04", "Series Title")]
+        [TestCase("Series.Title.S01.S02.S03.S04.WEB-DLRip-RlsGrp", "Series Title")]
+        public void should_capture_every_season_when_more_than_two_are_listed(string postTitle, string title)
         {
-            var result = Parser.Parser.ParseTitle("Show S01 S02 S03 S04");
-            result.SeriesTitle.Should().Be("Show");
+            var result = Parser.Parser.ParseTitle(postTitle);
+            result.SeriesTitle.Should().Be(title);
             result.EpisodeNumbers.Should().BeEmpty();
             result.AbsoluteEpisodeNumbers.Should().BeEmpty();
             result.FullSeason.Should().BeTrue();
             result.IsMultiSeason.Should().BeTrue();
-            result.SeasonNumbers.Should().Equal(1, 2);
+            result.SeasonNumbers.Should().Equal(1, 2, 3, 4);
         }
 
         [Test]
-        public void should_treat_a_season_list_with_a_gap_as_a_contiguous_range()
+        public void should_preserve_gaps_when_more_than_two_seasons_are_listed()
         {
-            var result = Parser.Parser.ParseTitle("Show S01 S03 S04");
-            result.SeriesTitle.Should().Be("Show");
+            var result = Parser.Parser.ParseTitle("Series Title S01 S03 S04");
+            result.SeriesTitle.Should().Be("Series Title");
             result.EpisodeNumbers.Should().BeEmpty();
             result.AbsoluteEpisodeNumbers.Should().BeEmpty();
             result.FullSeason.Should().BeTrue();
             result.IsMultiSeason.Should().BeTrue();
-            result.SeasonNumbers.Should().Equal(1, 2, 3);
+            result.SeasonNumbers.Should().Equal(1, 3, 4);
+        }
+
+        [Test]
+        public void should_treat_exactly_two_listed_seasons_with_a_gap_as_a_range()
+        {
+            var result = Parser.Parser.ParseTitle("Series Title S01 S04");
+            result.SeriesTitle.Should().Be("Series Title");
+            result.IsMultiSeason.Should().BeTrue();
+            result.SeasonNumbers.Should().Equal(1, 2, 3, 4);
         }
 
         [Test]
