@@ -286,3 +286,10 @@ The maintainers require a human to own every line: an agent can produce the diff
 Before opening **Stage 1's PR**:
 - Wait for at least initial maintainer signal on the discussion ticket — the two open questions most likely to change this plan are (a) whether to revive #8508 instead of opening fresh, and (b) whether non-contiguous season packs need any support at all (this plan says no, matching #8508's and #8668's own review outcomes, but it's still an assumption until confirmed).
 - If maintainer feedback changes the design, update this file first, then the code — don't let the two drift.
+
+## 10. Workflow conventions
+
+- Branch names: `feature/<short-description>`, no `claude/` prefix.
+- Commit messages: short and human, not changelog-style.
+- Each stage branches from `v5-develop` and ships as a single commit; no docs commits on code branches.
+- Keep tests as small and focused as the behavior they cover — prefer a couple of sharp cases over broad parameterized sweeps.
