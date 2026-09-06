@@ -45,7 +45,7 @@ None of these are hypothetical — I traced each one against the actual `Setup()
 ## Deliberate scope trims vs. the plan
 
 - **Step 8 frontend/localization** (`InteractiveSearchRow.tsx`, `ParseResult.tsx`, new localization key) was left undone. The plan marks this step "optional, independent," and there's no way to run `yarn build` or exercise the UI in this environment to verify a frontend change actually works — shipping unverified TSX felt worse than leaving it for the human reviewer to add (or ask for) separately. The backend half of Step 8 (`SeasonNumbers` on `ParsedEpisodeInfoResource`) was done since it's a pure additive C# field.
-- **PR/issue process** (plan §9) — not attempted. No issue was opened, no PR created, nothing pushed anywhere. This is local, uncommitted work for human review, per the task instructions.
+- **PR process** (plan §9) — not attempted; no PR created, nothing pushed to the upstream repo. A discussion issue proposing this exact narrowed scope has since been opened upstream (see `PLAN.md` §9); this remains local work on a fork branch for human review before any PR is opened.
 
 ## What to double-check before trusting this (no compiler was available)
 
@@ -56,7 +56,4 @@ None of these are hypothetical — I traced each one against the actual `Setup()
 
 ## Suggested commit split
 
-The plan's own scope note ("5 core files + 1 message string + 3-4 test fixtures + optional small UI tweaks") suggests one PR, but if it's easier to review in pieces:
-1. `ParsedEpisodeInfo` facade + `Parser.cs` + parser tests (Steps 1–2, 7 parser tests) — self-contained, no behavior change outside parsing.
-2. `ParsingService` + decision engine specs + import service + tests (Steps 3–5, 7 remaining tests) — the actual behavior change.
-3. Queue model (Step 6b) — independent of the rest; only touches how the queue displays season numbers.
+Superseded by `PLAN.md` §4, which lays out a firmer 4-stage PR sequence (parser model → episode resolution → import gate removal → queue model) matching the scope the discussion issue proposes, rather than the rougher 3-way split originally sketched here. The code as implemented on this branch is one flat commit; it maps cleanly onto those four stages by file (see the table in `PLAN.md` §4) if/when it needs to be split into separate PR branches.

@@ -2,6 +2,8 @@
 
 Prepared as input for a GitHub issue/discussion, per `CONTRIBUTING.md`'s "discuss before building large features" requirement — both prior attempts at this were told exactly that. Sources below are pulled directly from the referenced issues/PRs; verify exact wording before quoting anyone in the actual ticket, since it was extracted via automated summarization, not copy-pasted by hand.
 
+**Status**: a scoped-down version of this proposal has since been opened as a discussion issue upstream. No maintainer replies yet as of this writing. See `PLAN.md` §4 and §9 for the resulting PR-staging plan and current process status.
+
 ## Problem statement
 
 A torrent/NZB named like `Show.S01-S05.1080p...` currently:
