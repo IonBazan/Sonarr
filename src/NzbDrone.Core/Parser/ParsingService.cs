@@ -175,13 +175,14 @@ namespace NzbDrone.Core.Parser
 
         private RemoteEpisode Map(ParsedEpisodeInfo parsedEpisodeInfo, int tvdbId, int tvRageId, string imdbId, Series series, SearchCriteriaBase searchCriteria)
         {
-            var sceneMapping = _sceneMappingService.FindSceneMapping(parsedEpisodeInfo.SeriesTitle, parsedEpisodeInfo.ReleaseTitle, parsedEpisodeInfo.SeasonNumber);
+            var anchorSeasonNumber = parsedEpisodeInfo.SeasonNumbers.FirstOrDefault();
+            var sceneMapping = _sceneMappingService.FindSceneMapping(parsedEpisodeInfo.SeriesTitle, parsedEpisodeInfo.ReleaseTitle, anchorSeasonNumber);
 
             var remoteEpisode = new RemoteEpisode
             {
                 ParsedEpisodeInfo = parsedEpisodeInfo,
                 SceneMapping = sceneMapping,
-                MappedSeasonNumber = parsedEpisodeInfo.SeasonNumber
+                MappedSeasonNumber = anchorSeasonNumber
             };
 
             // For now we just detect tvdb vs scene, but we can do multiple 'origins' in the future.
@@ -189,7 +190,7 @@ namespace NzbDrone.Core.Parser
             if (sceneMapping != null)
             {
                 if (sceneMapping.SeasonNumber.HasValue && sceneMapping.SeasonNumber.Value >= 0 &&
-                    sceneMapping.SceneSeasonNumber <= parsedEpisodeInfo.SeasonNumber)
+                    sceneMapping.SceneSeasonNumber <= anchorSeasonNumber)
                 {
                     remoteEpisode.MappedSeasonNumber += sceneMapping.SeasonNumber.Value - sceneMapping.SceneSeasonNumber.Value;
                 }
@@ -200,8 +201,8 @@ namespace NzbDrone.Core.Parser
                 }
                 else if (sceneMapping.Type == "XemService" &&
                          sceneMapping.SceneSeasonNumber.NonNegative().HasValue &&
-                         parsedEpisodeInfo.SeasonNumber == 1 &&
-                         sceneMapping.SceneSeasonNumber != parsedEpisodeInfo.SeasonNumber)
+                         anchorSeasonNumber == 1 &&
+                         sceneMapping.SceneSeasonNumber != anchorSeasonNumber)
                 {
                     remoteEpisode.MappedSeasonNumber = sceneMapping.SceneSeasonNumber.Value;
                 }
@@ -253,13 +254,23 @@ namespace NzbDrone.Core.Parser
                 return remoteEpisode.Episodes;
             }
 
-            return GetEpisodes(parsedEpisodeInfo, series, parsedEpisodeInfo.SeasonNumber, sceneSource, searchCriteria);
+            return GetEpisodes(parsedEpisodeInfo, series, parsedEpisodeInfo.SeasonNumbers.FirstOrDefault(), sceneSource, searchCriteria);
         }
 
         private List<Episode> GetEpisodes(ParsedEpisodeInfo parsedEpisodeInfo, Series series, int mappedSeasonNumber, bool sceneSource, SearchCriteriaBase searchCriteria)
         {
             if (parsedEpisodeInfo.FullSeason)
             {
+                if (parsedEpisodeInfo.IsMultiSeason)
+                {
+                    var offset = mappedSeasonNumber - parsedEpisodeInfo.SeasonNumbers.FirstOrDefault();
+
+                    return parsedEpisodeInfo.SeasonNumbers
+                                             .Select(seasonNumber => seasonNumber + offset)
+                                             .SelectMany(seasonNumber => _episodeService.GetEpisodesBySeason(series.Id, seasonNumber))
+                                             .ToList();
+                }
+
                 if (series.UseSceneNumbering && sceneSource)
                 {
                     var episodes = _episodeService.GetEpisodesBySceneSeason(series.Id, mappedSeasonNumber);
