@@ -1,0 +1,135 @@
+name: Docker
+
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FRAMEWORK: net10.0
+  VERSION: 5.0.0.${{ github.run_number }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.variables.outputs.branch }}
+    steps:
+      - name: Setup Environment Variables
+        id: variables
+        env:
+          RAW_BRANCH_NAME: ${{ github.ref_name }}
+        run: echo "branch=${RAW_BRANCH_NAME//\//-}" >> "$GITHUB_OUTPUT"
+
+  backend:
+    needs: prepare
+    strategy:
+      matrix:
+        runtime: [linux-musl-x64, linux-musl-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v6
+
+      - name: Build
+        uses: ./.github/actions/build
+        with:
+          branch: ${{ needs.prepare.outputs.branch }}
+          version: ${{ env.VERSION }}
+          framework: ${{ env.FRAMEWORK }}
+          runtime: ${{ matrix.runtime }}
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v6
+
+      - name: Volta
+        uses: volta-cli/action@v5
+
+      - name: Yarn Install
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        run: yarn build
+
+      - name: Publish UI Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: build_ui
+          path: _output/UI/**/*
+
+  docker:
+    needs: [prepare, backend, frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@v6
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: build-*
+          path: _artifacts
+          merge-multiple: true
+
+      - name: Download UI Artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: build_ui
+          path: _artifacts/UI
+
+      - name: Prepare Context
+        run: |
+          for arch in amd64:x64 arm64:arm64; do
+            folder=_docker/${arch%%:*}
+            mkdir -p _docker
+            mv _artifacts/linux-musl-${arch##*:}/$FRAMEWORK/Sonarr $folder
+            rm -rf $folder/Sonarr.Update
+            cp -r _artifacts/UI $folder/UI
+            find $folder \( -name Sonarr -o -name ffprobe \) -exec chmod a+x {} \;
+          done
+          cp distribution/docker/Dockerfile _docker/
+
+      - name: Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=${{ needs.prepare.outputs.branch }}
+            type=raw,value=${{ needs.prepare.outputs.branch }}-${{ env.VERSION }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: _docker
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BRANCH=${{ needs.prepare.outputs.branch }}
+            VERSION=${{ env.VERSION }}
