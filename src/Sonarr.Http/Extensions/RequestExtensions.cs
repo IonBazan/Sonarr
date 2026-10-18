@@ -89,6 +89,11 @@ namespace Sonarr.Http.Extensions
 
             var remoteIP = request.HttpContext.Connection.RemoteIpAddress;
 
+            if (remoteIP == null)
+            {
+                return "Unknown";
+            }
+
             if (remoteIP.IsIPv4MappedToIPv6)
             {
                 remoteIP = remoteIP.MapToIPv4();

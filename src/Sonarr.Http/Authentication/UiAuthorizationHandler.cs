@@ -42,6 +42,7 @@ namespace NzbDrone.Http.Authentication
             {
                 if (context.Resource is HttpContext httpContext &&
                     IPAddress.TryParse(httpContext.GetRemoteIP(), out var ipAddress) &&
+                    IsClientAddressKnown(httpContext) &&
                     IPAddress.IsLoopback(ipAddress))
                 {
                     context.Succeed(requirement);
