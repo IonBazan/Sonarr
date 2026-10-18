@@ -5,13 +5,11 @@
     <title>OAuth landing page</title>
     <script>
       <!--
-      if (window.opener && window.opener.onCompleteOauth) {
-        window.opener.onCompleteOauth(window.location.search, function () {
-          window.close();
-        });
-      } else {
-        window.close();
-      }
+      var channel = new BroadcastChannel('oauth:' + window.location.pathname);
+
+      channel.postMessage(window.location.search);
+      channel.close();
+      window.close();
       -->
     </script>
   </head>

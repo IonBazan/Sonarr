@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { type Error } from 'App/State/AppSectionState';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import requestAction from 'Utilities/requestAction';
 
-const callbackUrl = `${window.location.origin}${window.Sonarr.urlBase}/oauth.html`;
+const callbackPath = `${window.Sonarr.urlBase}/oauth.html`;
+const callbackUrl = `${window.location.origin}${callbackPath}`;
 
 interface OAuthResult {
   [key: string]: string | number | boolean;
@@ -33,19 +34,24 @@ interface QueryParams {
   [key: string]: string;
 }
 
-interface WindowWithOAuth extends Window {
-  onCompleteOauth?: (query: string, onComplete: () => void) => void;
+const POLL_INTERVAL = 5000;
+const MAX_POLLS = 60;
+const CLOSED_CHECK_INTERVAL = 500;
+
+function isCancelled(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError';
 }
 
 function showOAuthWindow(
   url: string,
   payload: StartOAuthParams,
+  signal: AbortSignal,
   poll = false,
   ajaxOptions?: Record<string, unknown>
 ): Promise<QueryParams> {
   return new Promise((resolve, reject) => {
-    const selfWindow = window as WindowWithOAuth;
-    const newWindow = window.open(url);
+    // Opened blank first so the provider page gets no opener and can't navigate this tab
+    const newWindow = window.open('', '_blank');
 
     if (
       !newWindow ||
@@ -69,46 +75,73 @@ function showOAuthWindow(
       return reject(error);
     }
 
+    newWindow.opener = null;
+    newWindow.location.href = url;
+
+    const channel = new BroadcastChannel(`oauth:${callbackPath}`);
+    let pollTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
+    let closedInterval: ReturnType<typeof setInterval> | undefined = undefined;
+
+    const finish = (settle: () => void) => {
+      clearTimeout(pollTimeout);
+      clearInterval(closedInterval);
+      channel.close();
+      signal.removeEventListener('abort', handleAbort);
+      settle();
+    };
+
+    const handleAbort = () => {
+      finish(() => reject(new DOMException('OAuth cancelled', 'AbortError')));
+    };
+
+    signal.addEventListener('abort', handleAbort);
+
     if (poll) {
+      let polls = 0;
+
       const pollAction = () => {
+        polls++;
+
         requestAction({
           action: 'pollOAuth',
           queryParams: ajaxOptions,
           ...payload,
-        }).then((response: OAuthResponse) => {
-          if (response.success) {
-            resolve({});
-          } else {
-            setTimeout(() => {
-              pollAction();
-            }, 5000);
+        }).then(
+          (response: OAuthResponse) => {
+            if (signal.aborted) {
+              return;
+            }
+
+            if (response.success) {
+              finish(() => resolve({}));
+            } else if (polls >= MAX_POLLS) {
+              finish(() =>
+                reject(new Error('Timed out waiting for authorization'))
+              );
+            } else {
+              pollTimeout = setTimeout(pollAction, POLL_INTERVAL);
+            }
+          },
+          (error: unknown) => {
+            finish(() => reject(error));
           }
-        });
+        );
       };
 
-      setTimeout(() => {
-        pollAction();
-      }, 5000);
+      pollTimeout = setTimeout(pollAction, POLL_INTERVAL);
     } else {
-      selfWindow.onCompleteOauth = function (
-        query: string,
-        onComplete: () => void
-      ) {
-        delete selfWindow.onCompleteOauth;
-
-        const queryParams: Record<string, string> = {};
-        const splitQuery = query.substring(1).split('&');
-
-        splitQuery.forEach((param) => {
-          if (param) {
-            const paramSplit = param.split('=');
-            queryParams[paramSplit[0]] = paramSplit[1];
-          }
+      channel.onmessage = (event: MessageEvent<string>) => {
+        finish(() => {
+          newWindow.close();
+          resolve(Object.fromEntries(new URLSearchParams(event.data)));
         });
-
-        onComplete();
-        resolve(queryParams);
       };
+
+      closedInterval = setInterval(() => {
+        if (newWindow.closed) {
+          handleAbort();
+        }
+      }, CLOSED_CHECK_INTERVAL);
     }
   });
 }
@@ -142,7 +175,12 @@ const useOAuth = () => {
     setOAuthState((prev) => ({ ...prev, ...values }));
   }, []);
 
+  const abortController = useRef<AbortController | null>(null);
+
   const resetOAuth = useCallback(() => {
+    abortController.current?.abort();
+    abortController.current = null;
+
     setOAuthState({
       authorizing: false,
       result: null,
@@ -160,6 +198,11 @@ const useOAuth = () => {
         ...otherPayload,
       };
 
+      abortController.current?.abort();
+
+      const controller = new AbortController();
+      abortController.current = controller;
+
       setOAuthValue({ authorizing: true });
 
       try {
@@ -171,7 +214,11 @@ const useOAuth = () => {
         let queryParams: QueryParams | null = null;
 
         if (response.oauthUrl) {
-          queryParams = await showOAuthWindow(response.oauthUrl, params);
+          queryParams = await showOAuthWindow(
+            response.oauthUrl,
+            params,
+            controller.signal
+          );
         } else {
           const intermediateResponse = await executeIntermediateRequest(
             otherPayload,
@@ -186,6 +233,7 @@ const useOAuth = () => {
           queryParams = await showOAuthWindow(
             intermediateResponse.oauthUrl,
             params,
+            controller.signal,
             intermediateResponse.poll || false,
             intermediateResponse
           );
@@ -208,6 +256,12 @@ const useOAuth = () => {
 
         return tokenResponse;
       } catch (error) {
+        if (isCancelled(error)) {
+          setOAuthValue({ authorizing: false });
+
+          return null;
+        }
+
         const oAuthError = error as Error;
         setOAuthValue({
           authorizing: false,

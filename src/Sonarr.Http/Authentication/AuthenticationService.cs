@@ -37,6 +37,7 @@ namespace Sonarr.Http.Authentication
         private static readonly TimeSpan ResetRequestThrottle = TimeSpan.FromMinutes(1);
 
         private static readonly Logger _authLogger = LogManager.GetLogger("Auth");
+        private readonly object _failedAttemptsLock = new object();
         private readonly IConfigFileProvider _configFileProvider;
         private readonly IUserService _userService;
         private readonly ICached<FailedLoginAttempts> _failedAttempts;
@@ -63,7 +64,7 @@ namespace Sonarr.Http.Authentication
 
             var remoteIP = request.GetRemoteIP();
 
-            if (IsLockedOut(remoteIP))
+            if (!TryReserveAttempt(remoteIP))
             {
                 LogLockout(remoteIP, username);
 
@@ -79,7 +80,7 @@ namespace Sonarr.Http.Authentication
                 return user;
             }
 
-            RecordFailedAttempt(remoteIP, username);
+            LogFailure(remoteIP, username);
 
             return null;
         }
@@ -154,7 +155,7 @@ namespace Sonarr.Http.Authentication
 
             var remoteIP = request.GetRemoteIP();
 
-            if (IsLockedOut(remoteIP))
+            if (!TryReserveAttempt(remoteIP))
             {
                 LogLockout(remoteIP, username);
 
@@ -163,7 +164,7 @@ namespace Sonarr.Http.Authentication
 
             if (username.IsNullOrWhiteSpace())
             {
-                RecordFailedAttempt(remoteIP, username);
+                LogFailure(remoteIP, username);
 
                 return false;
             }
@@ -174,7 +175,7 @@ namespace Sonarr.Http.Authentication
 
             if (!isMatchingToken && !isMatchingConfiguredToken)
             {
-                RecordFailedAttempt(remoteIP, username);
+                LogFailure(remoteIP, username);
 
                 return false;
             }
@@ -234,29 +235,31 @@ namespace Sonarr.Http.Authentication
                 Encoding.UTF8.GetBytes(HashToken(token)));
         }
 
-        private bool IsLockedOut(string remoteIP)
+        // Counts the attempt before the credentials are checked so parallel requests can't all pass the lockout check
+        private bool TryReserveAttempt(string remoteIP)
         {
-            _failedAttempts.ClearExpired();
-
-            var attempts = _failedAttempts.Find(remoteIP);
-
-            return attempts != null && attempts.LockedUntilUtc > DateTime.UtcNow;
-        }
-
-        private void RecordFailedAttempt(string remoteIP, string username)
-        {
-            var attempts = _failedAttempts.Find(remoteIP) ?? new FailedLoginAttempts();
-
-            attempts.Count++;
-
-            if (attempts.Count >= MaxFailedAttempts)
+            lock (_failedAttemptsLock)
             {
-                attempts.LockedUntilUtc = DateTime.UtcNow + LockoutDuration;
+                _failedAttempts.ClearExpired();
+
+                var attempts = _failedAttempts.Find(remoteIP) ?? new FailedLoginAttempts();
+
+                if (attempts.LockedUntilUtc > DateTime.UtcNow)
+                {
+                    return false;
+                }
+
+                attempts.Count++;
+
+                if (attempts.Count >= MaxFailedAttempts)
+                {
+                    attempts.LockedUntilUtc = DateTime.UtcNow + LockoutDuration;
+                }
+
+                _failedAttempts.Set(remoteIP, attempts, LockoutDuration);
+
+                return true;
             }
-
-            _failedAttempts.Set(remoteIP, attempts, LockoutDuration);
-
-            LogFailure(remoteIP, username);
         }
 
         public void LogUnauthorized(HttpRequest context)
