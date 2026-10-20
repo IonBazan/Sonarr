@@ -119,7 +119,13 @@ namespace NzbDrone.Core.Tv
                 startingSeasonNumber = 0;
             }
 
-            pagingSpec.Records = GetPagedRecords(EpisodesWithoutFilesBuilder(currentTime, startingSeasonNumber, seriesTags), pagingSpec, PagedQuery);
+            // Load each series once instead of joining it onto every episode row
+            pagingSpec.Records = GetPagedRecords(EpisodesWithoutFilesBuilder(currentTime, startingSeasonNumber, seriesTags), pagingSpec, Query);
+
+            var seriesIds = pagingSpec.Records.Select(e => e.SeriesId).Distinct().ToList();
+            var series = _database.Query<Series>(Builder().Where<Series>(s => seriesIds.Contains(s.Id))).ToDictionary(s => s.Id);
+
+            pagingSpec.Records.ForEach(e => e.Series = series[e.SeriesId]);
             pagingSpec.TotalRecords = GetPagedRecordCount(EpisodesWithoutFilesBuilder(currentTime, startingSeasonNumber, seriesTags).SelectCountDistinct<Episode>(x => x.Id), pagingSpec);
 
             return pagingSpec;
