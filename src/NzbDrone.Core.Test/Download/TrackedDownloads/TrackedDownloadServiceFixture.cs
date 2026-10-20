@@ -541,6 +541,18 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
             Subject.Find("other").Should().NotBeNull();
         }
 
+        [Test]
+        public void should_stop_tracking_downloads_from_inactive_download_clients()
+        {
+            GivenTrackedDownload(1, "active");
+            GivenTrackedDownload(2, "inactive");
+
+            Subject.StopTrackingInactiveClients(new List<int> { 1 });
+
+            Subject.Find("active").Should().NotBeNull();
+            Subject.Find("inactive").Should().BeNull();
+        }
+
         private void GivenTrackedDownload(int downloadClientId, string downloadId)
         {
             var client = new DownloadClientDefinition

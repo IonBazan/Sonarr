@@ -25,6 +25,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         List<TrackedDownload> GetTrackedDownloads();
         void UpdateTrackable(List<TrackedDownload> trackedDownloads);
         void StopTrackingMissing(int downloadClientId, List<string> downloadIds);
+        void StopTrackingInactiveClients(List<int> activeDownloadClientIds);
     }
 
     public class TrackedDownloadService : ITrackedDownloadService,
@@ -239,6 +240,17 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             var missing = GetTrackedDownloads().Where(t => t.DownloadClient == downloadClientId && !present.Contains(t.DownloadItem.DownloadId));
 
             foreach (var trackedDownload in missing)
+            {
+                _cache.Remove(trackedDownload.DownloadItem.DownloadId);
+            }
+        }
+
+        public void StopTrackingInactiveClients(List<int> activeDownloadClientIds)
+        {
+            var active = activeDownloadClientIds.ToHashSet();
+            var inactive = GetTrackedDownloads().Where(t => !active.Contains(t.DownloadClient));
+
+            foreach (var trackedDownload in inactive)
             {
                 _cache.Remove(trackedDownload.DownloadItem.DownloadId);
             }

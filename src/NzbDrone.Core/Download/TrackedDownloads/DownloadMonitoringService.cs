@@ -74,6 +74,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     trackedDownloads.AddRange(clientTrackedDownloads.Where(DownloadIsTrackable));
                 }
 
+                _trackedDownloadService.StopTrackingInactiveClients(_downloadClientFactory.DownloadHandlingEnabled(false).Select(c => c.Definition.Id).ToList());
                 _trackedDownloadService.UpdateTrackable(trackedDownloads);
                 _eventAggregator.PublishEvent(new TrackedDownloadRefreshedEvent(trackedDownloads));
                 _manageCommandQueue.Push(new ProcessMonitoredDownloadsCommand(), CommandPriority.High);
