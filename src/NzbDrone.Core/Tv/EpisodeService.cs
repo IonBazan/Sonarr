@@ -35,6 +35,8 @@ namespace NzbDrone.Core.Tv
         void UpdateEpisodes(List<Episode> episodes);
         void UpdateLastSearchTime(List<Episode> episodes);
         List<Episode> EpisodesBetweenDates(DateTime start, DateTime end, bool includeUnmonitored, bool includeSpecials);
+        bool HasAiredEpisodeWithoutTitle(int seriesId);
+        bool HasEpisodeAiredAfter(int seriesId, DateTime date);
         void InsertMany(List<Episode> episodes);
         void UpdateMany(List<Episode> episodes);
         void DeleteMany(List<Episode> episodes);
@@ -212,6 +214,16 @@ namespace NzbDrone.Core.Tv
             var episodes = _episodeRepository.EpisodesBetweenDates(start.ToUniversalTime(), end.ToUniversalTime(), includeUnmonitored, includeSpecials);
 
             return episodes;
+        }
+
+        public bool HasAiredEpisodeWithoutTitle(int seriesId)
+        {
+            return _episodeRepository.HasAiredEpisodeWithoutTitle(seriesId);
+        }
+
+        public bool HasEpisodeAiredAfter(int seriesId, DateTime date)
+        {
+            return _episodeRepository.HasEpisodeAiredAfter(seriesId, date);
         }
 
         public void InsertMany(List<Episode> episodes)

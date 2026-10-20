@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Linq;
 using NLog;
-using NzbDrone.Common.Extensions;
 
 namespace NzbDrone.Core.Tv
 {
@@ -31,14 +29,7 @@ namespace NzbDrone.Core.Tv
                     return true;
                 }
 
-                var episodes = _episodeService.GetEpisodeBySeries(series.Id);
-
-                var atLeastOneAiredEpisodeWithoutTitle = episodes.Any(e =>
-                    e.SeasonNumber > 0 &&
-                    e.AirDateUtc.HasValue && e.AirDateUtc.Value.Before(DateTime.UtcNow) &&
-                    e.Title.Equals("TBA", StringComparison.Ordinal));
-
-                if (atLeastOneAiredEpisodeWithoutTitle)
+                if (_episodeService.HasAiredEpisodeWithoutTitle(series.Id))
                 {
                     _logger.Trace("Series {0} with at least one aired episode with TBA title, should refresh.",
                         series.Title);
@@ -58,9 +49,7 @@ namespace NzbDrone.Core.Tv
                     return true;
                 }
 
-                var lastEpisode = episodes.MaxBy(e => e.AirDateUtc);
-
-                if (lastEpisode != null && lastEpisode.AirDateUtc > DateTime.UtcNow.AddDays(-30))
+                if (_episodeService.HasEpisodeAiredAfter(series.Id, DateTime.UtcNow.AddDays(-30)))
                 {
                     _logger.Trace("Last episode in {0} aired less than 30 days ago, should refresh.", series.Title);
                     return true;

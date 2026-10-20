@@ -27,6 +27,8 @@ namespace NzbDrone.Core.Tv
         List<Episode> FindEpisodesBySceneNumbering(int seriesId, int seasonNumber, int episodeNumber);
         List<Episode> FindEpisodesBySceneNumbering(int seriesId, int sceneAbsoluteEpisodeNumber);
         List<Episode> EpisodesBetweenDates(DateTime startDate, DateTime endDate, bool includeUnmonitored, bool includeSpecials);
+        bool HasAiredEpisodeWithoutTitle(int seriesId);
+        bool HasEpisodeAiredAfter(int seriesId, DateTime date);
         void SetMonitoredFlat(Episode episode, bool monitored);
         void SetMonitoredBySeason(int seriesId, int seasonNumber, bool monitored);
         void SetMonitored(IEnumerable<int> ids, bool monitored);
@@ -166,6 +168,18 @@ namespace NzbDrone.Core.Tv
             }
 
             return Query(builder);
+        }
+
+        public bool HasAiredEpisodeWithoutTitle(int seriesId)
+        {
+            var now = DateTime.UtcNow;
+
+            return Query(e => e.SeriesId == seriesId && e.SeasonNumber > 0 && e.AirDateUtc < now && e.Title == "TBA").Any();
+        }
+
+        public bool HasEpisodeAiredAfter(int seriesId, DateTime date)
+        {
+            return Query(e => e.SeriesId == seriesId && e.AirDateUtc > date).Any();
         }
 
         public void SetMonitoredFlat(Episode episode, bool monitored)

@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
+using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Tv;
 using NzbDrone.Test.Common;
@@ -19,14 +19,6 @@ namespace NzbDrone.Core.Test.TvTests
             _series = Builder<Series>.CreateNew()
                                      .With(v => v.Status = SeriesStatusType.Continuing)
                                      .Build();
-
-            Mocker.GetMock<IEpisodeService>()
-                  .Setup(s => s.GetEpisodeBySeries(_series.Id))
-                  .Returns(Builder<Episode>.CreateListOfSize(2)
-                                           .All()
-                                           .With(e => e.AirDateUtc = DateTime.Today.AddDays(-100))
-                                           .Build()
-                                           .ToList());
         }
 
         private void GivenSeriesIsEnded()
@@ -67,14 +59,15 @@ namespace NzbDrone.Core.Test.TvTests
         private void GivenRecentlyAired()
         {
             Mocker.GetMock<IEpisodeService>()
-                              .Setup(s => s.GetEpisodeBySeries(_series.Id))
-                              .Returns(Builder<Episode>.CreateListOfSize(2)
-                                                       .TheFirst(1)
-                                                       .With(e => e.AirDateUtc = DateTime.Today.AddDays(-7))
-                                                       .TheLast(1)
-                                                       .With(e => e.AirDateUtc = DateTime.Today.AddDays(-100))
-                                                       .Build()
-                                                       .ToList());
+                  .Setup(s => s.HasEpisodeAiredAfter(_series.Id, It.IsAny<DateTime>()))
+                  .Returns(true);
+        }
+
+        private void GivenAiredEpisodeWithoutTitle()
+        {
+            Mocker.GetMock<IEpisodeService>()
+                  .Setup(s => s.HasAiredEpisodeWithoutTitle(_series.Id))
+                  .Returns(true);
         }
 
         [Test]
@@ -147,6 +140,15 @@ namespace NzbDrone.Core.Test.TvTests
         {
             GivenSeriesLastRefreshedHalfADayAgo();
             GivenSeriesIsDeleted();
+
+            Subject.ShouldRefresh(_series).Should().BeTrue();
+        }
+
+        [Test]
+        public void should_return_true_if_recently_refreshed_series_has_aired_episode_without_title()
+        {
+            GivenSeriesLastRefreshedRecently();
+            GivenAiredEpisodeWithoutTitle();
 
             Subject.ShouldRefresh(_series).Should().BeTrue();
         }

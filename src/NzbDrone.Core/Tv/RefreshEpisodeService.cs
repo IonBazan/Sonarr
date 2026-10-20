@@ -48,16 +48,14 @@ namespace NzbDrone.Core.Tv
             var orderedEpisodes = OrderEpisodes(series, dupeFreeRemoteEpisodes).ToList();
             var episodesPerSeason = orderedEpisodes.GroupBy(s => s.SeasonNumber).ToDictionary(g => g.Key, g => g.Count());
             var latestSeason = seasons.MaxBy(s => s.SeasonNumber);
+            var existingByNumber = existingEpisodes.GroupBy(e => (e.SeasonNumber, e.EpisodeNumber)).ToDictionary(g => g.Key, g => g.First());
 
             foreach (var episode in orderedEpisodes)
             {
                 try
                 {
-                    var episodeToUpdate = existingEpisodes.FirstOrDefault(e => e.SeasonNumber == episode.SeasonNumber && e.EpisodeNumber == episode.EpisodeNumber);
-
-                    if (episodeToUpdate != null)
+                    if (existingByNumber.Remove((episode.SeasonNumber, episode.EpisodeNumber), out var episodeToUpdate))
                     {
-                        existingEpisodes.Remove(episodeToUpdate);
                         updateList.Add(episodeToUpdate);
 
                         // Anime series with newly added absolute episode number
@@ -123,6 +121,8 @@ namespace NzbDrone.Core.Tv
 
             AdjustMultiEpisodeAirTime(series, allEpisodes);
             AdjustDirectToDvdAirDate(series, allEpisodes);
+
+            existingEpisodes = existingEpisodes.Except(updateList).ToList();
 
             _episodeService.DeleteMany(existingEpisodes);
             _episodeService.UpdateMany(updateList);
