@@ -553,6 +553,95 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
             Subject.Find("inactive").Should().BeNull();
         }
 
+        [Test]
+        public void should_reuse_downloading_item_when_unchanged()
+        {
+            var client = GivenGrabbedDownload();
+
+            var first = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+            var second = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+
+            second.Should().BeSameAs(first);
+            Mocker.GetMock<IHistoryService>().Verify(s => s.FindByDownloadId("35238"), Times.Once());
+        }
+
+        [Test]
+        public void should_rebuild_downloading_item_when_title_changes()
+        {
+            var client = GivenGrabbedDownload();
+
+            var first = Subject.TrackDownload(client, GivenDownloadItem("35238"));
+            var second = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+
+            second.Should().NotBeSameAs(first);
+            Mocker.GetMock<IHistoryService>().Verify(s => s.FindByDownloadId("35238"), Times.Exactly(2));
+        }
+
+        [Test]
+        public void should_rebuild_downloading_item_with_warnings()
+        {
+            var client = GivenGrabbedDownload();
+
+            var first = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+            first.Warn("warning");
+
+            var second = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+
+            second.Should().NotBeSameAs(first);
+        }
+
+        private DownloadClientDefinition GivenGrabbedDownload()
+        {
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId("35238"))
+                .Returns([
+                    new EpisodeHistory
+                    {
+                        DownloadId = "35238",
+                        SourceTitle = "TV.Series.S01E01.1080p.WEB.H265-RlsGroup",
+                        SeriesId = 5,
+                        EpisodeId = 4,
+                        EventType = EpisodeHistoryEventType.Grabbed
+                    }
+                ]);
+
+            Mocker.GetMock<IParsingService>()
+                .Setup(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<IEnumerable<int>>()))
+                .Returns(() => new RemoteEpisode
+                {
+                    Series = new Series { Id = 5 },
+                    Episodes = [new Episode { Id = 4 }]
+                });
+
+            Mocker.GetMock<IParsingService>()
+                .Setup(s => s.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), null))
+                .Returns(() => new RemoteEpisode
+                {
+                    Series = new Series { Id = 5 },
+                    Episodes = [new Episode { Id = 4 }]
+                });
+
+            return new DownloadClientDefinition
+            {
+                Id = 1,
+                Protocol = DownloadProtocol.Torrent
+            };
+        }
+
+        private DownloadClientItem GivenDownloadItem(string title)
+        {
+            return new DownloadClientItem
+            {
+                Title = title,
+                DownloadId = "35238",
+                DownloadClientInfo = new DownloadClientItemClientInfo
+                {
+                    Protocol = DownloadProtocol.Torrent,
+                    Id = 1
+                }
+            };
+        }
+
         private void GivenTrackedDownload(int downloadClientId, string downloadId)
         {
             var client = new DownloadClientDefinition

@@ -100,7 +100,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         {
             var existingItem = Find(downloadItem.DownloadId);
 
-            if (existingItem != null && existingItem.State != TrackedDownloadState.Downloading)
+            if (existingItem != null && (existingItem.State != TrackedDownloadState.Downloading || CanReuse(existingItem, downloadClient, downloadItem)))
             {
                 LogItemChange(existingItem, existingItem.DownloadItem, downloadItem);
 
@@ -254,6 +254,18 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             {
                 _cache.Remove(trackedDownload.DownloadItem.DownloadId);
             }
+        }
+
+        private static bool CanReuse(TrackedDownload existingItem, DownloadClientDefinition downloadClient, DownloadClientItem downloadItem)
+        {
+            // Items that failed to match or have warnings are rebuilt so they pick up new history, series and episodes
+            return existingItem.DownloadClient == downloadClient.Id &&
+                   existingItem.Status == TrackedDownloadStatus.Ok &&
+                   existingItem.Added.HasValue &&
+                   existingItem.RemoteEpisode?.Series != null &&
+                   existingItem.RemoteEpisode.Episodes.Any() &&
+                   existingItem.DownloadItem.Title == downloadItem.Title &&
+                   existingItem.DownloadItem.TotalSize == downloadItem.TotalSize;
         }
 
         private void LogItemChange(TrackedDownload trackedDownload, DownloadClientItem existingItem, DownloadClientItem downloadItem)
