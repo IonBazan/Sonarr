@@ -31,6 +31,7 @@ import ArrayElement from 'typings/Helpers/ArrayElement';
 import { EnhancedSelectInputChanged, InputChanged } from 'typings/inputs';
 import { isMobile as isMobileUtil } from 'Utilities/browser';
 import * as keyCodes from 'Utilities/Constants/keyCodes';
+import { useFormInputGroup } from '../FormInputGroupContext';
 import TextInput from '../TextInput';
 import HintedSelectInputOption from './HintedSelectInputOption';
 import HintedSelectInputSelectedValue from './HintedSelectInputSelectedValue';
@@ -172,6 +173,7 @@ export interface EnhancedSelectInputProps<
   T extends EnhancedSelectInputValue<V>,
   V
 > {
+  id?: string;
   className?: string;
   disabledClassName?: string;
   name: string;
@@ -194,7 +196,9 @@ export interface EnhancedSelectInputProps<
 function EnhancedSelectInput<T extends EnhancedSelectInputValue<V>, V>(
   props: EnhancedSelectInputProps<T, V>
 ) {
+  const formInputGroup = useFormInputGroup();
   const {
+    id,
     className = styles.enhancedSelect,
     disabledClassName = styles.isDisabled,
     name,
@@ -503,6 +507,7 @@ function EnhancedSelectInput<T extends EnhancedSelectInputValue<V>, V>(
         {isEditable && typeof value === 'string' ? (
           <div className={styles.editableContainer}>
             <TextInput
+              id={id}
               className={className}
               name={name}
               value={value}
@@ -531,6 +536,9 @@ function EnhancedSelectInput<T extends EnhancedSelectInputValue<V>, V>(
           </div>
         ) : (
           <Link
+            id={id}
+            aria-describedby={formInputGroup?.describedBy}
+            aria-invalid={formInputGroup?.hasError || undefined}
             className={classNames(
               className,
               hasError && styles.hasError,
