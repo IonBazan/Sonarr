@@ -51,12 +51,16 @@ namespace NzbDrone.Core.CustomFormats
         {
             _formatRepository.Update(customFormat);
             _cache.Clear();
+
+            _eventAggregator.PublishEvent(new CustomFormatUpdatedEvent());
         }
 
         public void Update(List<CustomFormat> customFormat)
         {
             _formatRepository.UpdateMany(customFormat);
             _cache.Clear();
+
+            _eventAggregator.PublishEvent(new CustomFormatUpdatedEvent());
         }
 
         public CustomFormat Insert(CustomFormat customFormat)

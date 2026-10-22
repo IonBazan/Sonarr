@@ -3,6 +3,7 @@ using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Core.CustomFormats.Events;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
@@ -12,6 +13,7 @@ using NzbDrone.Core.Indexers.TorrentRss;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
 using NzbDrone.Core.Tv.Events;
@@ -588,6 +590,77 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
             var second = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
 
             second.Should().NotBeSameAs(first);
+        }
+
+        [Test]
+        public void should_rebuild_downloading_item_after_series_is_updated()
+        {
+            var client = GivenGrabbedDownload();
+
+            var first = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+
+            Subject.Handle(new SeriesUpdatedEvent(new Series { Id = 5 }));
+
+            Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup")).Should().NotBeSameAs(first);
+        }
+
+        [Test]
+        public void should_not_rebuild_downloading_item_after_other_series_is_updated()
+        {
+            var client = GivenGrabbedDownload();
+
+            var first = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+
+            Subject.Handle(new SeriesUpdatedEvent(new Series { Id = 6 }));
+
+            Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup")).Should().BeSameAs(first);
+        }
+
+        [TestCase(3, true)]
+        [TestCase(4, false)]
+        public void should_rebuild_downloading_item_after_its_quality_profile_is_updated(int profileId, bool rebuilt)
+        {
+            var client = GivenGrabbedDownload();
+
+            var first = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+            first.RemoteEpisode.Series.QualityProfileId = 3;
+
+            Subject.Handle(new QualityProfileUpdatedEvent(profileId));
+
+            var second = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+
+            if (rebuilt)
+            {
+                second.Should().NotBeSameAs(first);
+            }
+            else
+            {
+                second.Should().BeSameAs(first);
+            }
+        }
+
+        [Test]
+        public void should_rebuild_downloading_item_after_custom_format_is_updated()
+        {
+            var client = GivenGrabbedDownload();
+
+            var first = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+
+            Subject.Handle(new CustomFormatUpdatedEvent());
+
+            Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup")).Should().NotBeSameAs(first);
+        }
+
+        [Test]
+        public void should_rebuild_downloading_item_after_episodes_are_added_to_its_series()
+        {
+            var client = GivenGrabbedDownload();
+
+            var first = Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup"));
+
+            Subject.Handle(new EpisodeInfoRefreshedEvent(new Series { Id = 5 }, new List<Episode> { new Episode { Id = 10 } }, new List<Episode>(), new List<Episode>()));
+
+            Subject.TrackDownload(client, GivenDownloadItem("TV.Series.S01E01.1080p.WEB.H265-RlsGroup")).Should().NotBeSameAs(first);
         }
 
         private DownloadClientDefinition GivenGrabbedDownload()

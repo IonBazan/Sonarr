@@ -5,12 +5,14 @@ using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.CustomFormats;
+using NzbDrone.Core.CustomFormats.Events;
 using NzbDrone.Core.Download.Aggregation;
 using NzbDrone.Core.Download.History;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.Tv;
 using NzbDrone.Core.Tv.Events;
 
@@ -34,7 +36,12 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                                           IHandle<SeriesAddedEvent>,
                                           IHandle<SeriesEditedEvent>,
                                           IHandle<SeriesBulkEditedEvent>,
-                                          IHandle<SeriesDeletedEvent>
+                                          IHandle<SeriesDeletedEvent>,
+                                          IHandle<SeriesUpdatedEvent>,
+                                          IHandle<QualityProfileUpdatedEvent>,
+                                          IHandle<CustomFormatAddedEvent>,
+                                          IHandle<CustomFormatUpdatedEvent>,
+                                          IHandle<CustomFormatDeletedEvent>
     {
         private readonly IParsingService _parsingService;
         private readonly IHistoryService _historyService;
@@ -259,7 +266,8 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         private static bool CanReuse(TrackedDownload existingItem, DownloadClientDefinition downloadClient, DownloadClientItem downloadItem)
         {
             // Items that failed to match or have warnings are rebuilt so they pick up new history, series and episodes
-            return existingItem.DownloadClient == downloadClient.Id &&
+            return !existingItem.NeedsRebuild &&
+                   existingItem.DownloadClient == downloadClient.Id &&
                    existingItem.Status == TrackedDownloadStatus.Ok &&
                    existingItem.Added.HasValue &&
                    existingItem.RemoteEpisode?.Series != null &&
@@ -329,6 +337,11 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
         public void Handle(EpisodeInfoRefreshedEvent message)
         {
+            if (message.Added.Any())
+            {
+                MarkForRebuild(t => t.RemoteEpisode?.Series?.Id == message.Series.Id);
+            }
+
             var needsToUpdate = false;
 
             foreach (var episode in message.Removed)
@@ -413,6 +426,39 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                 cachedItems.ForEach(UpdateCachedItem);
 
                 _eventAggregator.PublishEvent(new TrackedDownloadRefreshedEvent(GetTrackedDownloads()));
+            }
+        }
+
+        public void Handle(SeriesUpdatedEvent message)
+        {
+            MarkForRebuild(t => t.RemoteEpisode?.Series?.Id == message.Series.Id);
+        }
+
+        public void Handle(QualityProfileUpdatedEvent message)
+        {
+            MarkForRebuild(t => t.RemoteEpisode?.Series?.QualityProfileId == message.Id);
+        }
+
+        public void Handle(CustomFormatAddedEvent message)
+        {
+            MarkForRebuild(t => true);
+        }
+
+        public void Handle(CustomFormatUpdatedEvent message)
+        {
+            MarkForRebuild(t => true);
+        }
+
+        public void Handle(CustomFormatDeletedEvent message)
+        {
+            MarkForRebuild(t => true);
+        }
+
+        private void MarkForRebuild(Func<TrackedDownload, bool> predicate)
+        {
+            foreach (var trackedDownload in _cache.Values.Where(predicate))
+            {
+                trackedDownload.NeedsRebuild = true;
             }
         }
     }
