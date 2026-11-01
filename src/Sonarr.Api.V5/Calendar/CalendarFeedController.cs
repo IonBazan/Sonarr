@@ -39,7 +39,7 @@ public class CalendarFeedController : Controller
         }
 
         var episodes = _episodeService.EpisodesBetweenDates(start, end, unmonitored, includeSpecials);
-        var allSeries = _seriesService.GetAllSeries();
+        var seriesById = _seriesService.GetSeries(episodes.Select(e => e.SeriesId).Distinct()).ToDictionary(s => s.Id);
         var calendar = new Ical.Net.Calendar
         {
             ProductId = "-//sonarr.tv//Sonarr//EN"
@@ -51,12 +51,7 @@ public class CalendarFeedController : Controller
 
         foreach (var episode in episodes.OrderBy(v => v.AirDateUtc!.Value))
         {
-            var series = allSeries.SingleOrDefault(s => s.Id == episode.SeriesId);
-
-            if (series == null)
-            {
-                continue;
-            }
+            var series = seriesById[episode.SeriesId];
 
             if (premieresOnly && (episode.SeasonNumber == 0 || episode.EpisodeNumber != 1))
             {
