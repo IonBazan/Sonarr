@@ -9,6 +9,7 @@ using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DataAugmentation.Scene;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Download.Aggregation;
+using NzbDrone.Core.Indexers;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
@@ -28,6 +29,7 @@ namespace NzbDrone.Core.DecisionEngine
         private readonly ICustomFormatCalculationService _formatCalculator;
         private readonly IRemoteEpisodeAggregationService _aggregationService;
         private readonly ISceneMappingService _sceneMappingService;
+        private readonly IIndexerFactory _indexerFactory;
         private readonly Logger _logger;
 
         public DownloadDecisionMaker(IEnumerable<IDownloadDecisionEngineSpecification> specifications,
@@ -35,6 +37,7 @@ namespace NzbDrone.Core.DecisionEngine
                                      ICustomFormatCalculationService formatService,
                                      IRemoteEpisodeAggregationService aggregationService,
                                      ISceneMappingService sceneMappingService,
+                                     IIndexerFactory indexerFactory,
                                      Logger logger)
         {
             _specifications = specifications;
@@ -42,6 +45,7 @@ namespace NzbDrone.Core.DecisionEngine
             _formatCalculator = formatService;
             _aggregationService = aggregationService;
             _sceneMappingService = sceneMappingService;
+            _indexerFactory = indexerFactory;
             _logger = logger;
         }
 
@@ -57,9 +61,12 @@ namespace NzbDrone.Core.DecisionEngine
 
         private IEnumerable<DownloadDecision> GetDecisions(List<ReleaseInfo> reports, bool pushedRelease, SearchCriteriaBase searchCriteria = null)
         {
+            var indexers = new List<IndexerDefinition>();
+
             if (reports.Any())
             {
                 _logger.ProgressInfo("Processing {0} releases", reports.Count);
+                indexers = _indexerFactory.All();
             }
             else
             {
@@ -99,6 +106,9 @@ namespace NzbDrone.Core.DecisionEngine
                     {
                         var remoteEpisode = _parsingService.Map(parsedEpisodeInfo, report.TvdbId, report.TvRageId, report.ImdbId, searchCriteria);
                         remoteEpisode.Release = report;
+                        remoteEpisode.Indexer = report.IndexerId > 0
+                            ? indexers.FirstOrDefault(i => i.Id == report.IndexerId)
+                            : indexers.FirstOrDefault(i => i.Name == report.Indexer);
                         remoteEpisode.ReleaseSource = GetReleaseSource(pushedRelease, searchCriteria);
 
                         if (remoteEpisode.Series == null)

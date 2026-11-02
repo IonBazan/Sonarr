@@ -78,9 +78,9 @@ namespace NzbDrone.Core.Download.Aggregation.Aggregators
 
             if (releaseInfo?.Title?.IsNotNullOrWhiteSpace() == true)
             {
-                IndexerDefinition indexer = null;
+                var indexer = remoteEpisode.Indexer;
 
-                if (releaseInfo is { IndexerId: > 0 })
+                if (indexer == null && releaseInfo is { IndexerId: > 0 })
                 {
                     indexer = _indexerFactory.Find(releaseInfo.IndexerId);
                 }

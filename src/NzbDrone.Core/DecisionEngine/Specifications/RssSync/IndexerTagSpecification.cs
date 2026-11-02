@@ -1,8 +1,6 @@
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Core.Datastore;
-using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
@@ -10,12 +8,10 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
     public class IndexerTagSpecification : IDownloadDecisionEngineSpecification
     {
         private readonly Logger _logger;
-        private readonly IIndexerFactory _indexerFactory;
 
-        public IndexerTagSpecification(Logger logger, IIndexerFactory indexerFactory)
+        public IndexerTagSpecification(Logger logger)
         {
             _logger = logger;
-            _indexerFactory = indexerFactory;
         }
 
         public SpecificationPriority Priority => SpecificationPriority.Default;
@@ -28,12 +24,9 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
                 return DownloadSpecDecision.Accept();
             }
 
-            IndexerDefinition indexer;
-            try
-            {
-                indexer = _indexerFactory.Get(subject.Release.IndexerId);
-            }
-            catch (ModelNotFoundException)
+            var indexer = subject.Indexer;
+
+            if (indexer == null)
             {
                 _logger.Debug("Indexer with id {0} does not exist, skipping indexer tags check", subject.Release.IndexerId);
                 return DownloadSpecDecision.Accept();

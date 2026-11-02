@@ -1,5 +1,4 @@
 ﻿using NLog;
-using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Parser.Model;
 
@@ -7,12 +6,10 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 {
     public class TorrentSeedingSpecification : IDownloadDecisionEngineSpecification
     {
-        private readonly IIndexerFactory _indexerFactory;
         private readonly Logger _logger;
 
-        public TorrentSeedingSpecification(IIndexerFactory indexerFactory, Logger logger)
+        public TorrentSeedingSpecification(Logger logger)
         {
-            _indexerFactory = indexerFactory;
             _logger = logger;
         }
 
@@ -28,12 +25,9 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
                 return DownloadSpecDecision.Accept();
             }
 
-            IndexerDefinition indexer;
-            try
-            {
-                indexer = _indexerFactory.Get(torrentInfo.IndexerId);
-            }
-            catch (ModelNotFoundException)
+            var indexer = remoteEpisode.Indexer;
+
+            if (indexer == null)
             {
                 _logger.Debug("Indexer with id {0} does not exist, skipping seeders check", torrentInfo.IndexerId);
                 return DownloadSpecDecision.Accept();

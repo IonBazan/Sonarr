@@ -1,8 +1,6 @@
 using FizzWare.NBuilder;
 using FluentAssertions;
-using Moq;
 using NUnit.Framework;
-using NzbDrone.Core.Datastore;
 using NzbDrone.Core.DecisionEngine.Specifications;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.TorrentRss;
@@ -37,12 +35,11 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.Search
 
             _indexerDefinition = new IndexerDefinition
             {
+                Id = 1,
                 Settings = new TorrentRssIndexerSettings { MinimumSeeders = 5 }
             };
 
-            Mocker.GetMock<IIndexerFactory>()
-                  .Setup(v => v.Get(1))
-                  .Returns(_indexerDefinition);
+            _remoteEpisode.Indexer = _indexerDefinition;
         }
 
         private void GivenReleaseSeeders(int? seeders)
@@ -73,9 +70,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.Search
         [Test]
         public void should_return_true_if_indexer_no_longer_exists()
         {
-            Mocker.GetMock<IIndexerFactory>()
-                  .Setup(v => v.Get(It.IsAny<int>()))
-                  .Callback<int>(i => { throw new ModelNotFoundException(typeof(IndexerDefinition), i); });
+            _remoteEpisode.Indexer = null;
 
             Subject.IsSatisfiedBy(_remoteEpisode, new()).Accepted.Should().BeTrue();
         }

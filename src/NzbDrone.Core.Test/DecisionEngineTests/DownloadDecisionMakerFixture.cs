@@ -7,6 +7,7 @@ using NUnit.Framework;
 using NzbDrone.Core.DataAugmentation.Scene;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.DecisionEngine.Specifications;
+using NzbDrone.Core.Indexers;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
@@ -66,6 +67,14 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
             Mocker.GetMock<IParsingService>()
                   .Setup(c => c.Map(It.IsAny<ParsedEpisodeInfo>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>(), It.IsAny<SearchCriteriaBase>()))
                   .Returns(_remoteEpisode);
+
+            Mocker.GetMock<IIndexerFactory>()
+                  .Setup(v => v.All())
+                  .Returns(new List<IndexerDefinition>
+                  {
+                      new IndexerDefinition { Id = 1, Name = "Indexer1" },
+                      new IndexerDefinition { Id = 2, Name = "Indexer2" }
+                  });
         }
 
         private void GivenSpecifications(params Mock<IDownloadDecisionEngineSpecification>[] mocks)
@@ -86,6 +95,57 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
             _pass1.Verify(c => c.IsSatisfiedBy(_remoteEpisode, It.IsAny<ReleaseDecisionInformation>()), Times.Once());
             _pass2.Verify(c => c.IsSatisfiedBy(_remoteEpisode, It.IsAny<ReleaseDecisionInformation>()), Times.Once());
             _pass3.Verify(c => c.IsSatisfiedBy(_remoteEpisode, It.IsAny<ReleaseDecisionInformation>()), Times.Once());
+        }
+
+        [Test]
+        public void should_fetch_indexers_once_per_batch()
+        {
+            GivenSpecifications(_pass1);
+
+            _reports.Add(new ReleaseInfo { Title = "The.Office.S03E116.DVDRip.XviD-OSiTV", IndexerId = 1 });
+            _reports.Add(new ReleaseInfo { Title = "The.Office.S03E117.DVDRip.XviD-OSiTV", IndexerId = 2 });
+
+            Subject.GetRssDecision(_reports).ToList();
+
+            Mocker.GetMock<IIndexerFactory>().Verify(v => v.All(), Times.Once());
+        }
+
+        [Test]
+        public void should_set_indexer_by_id()
+        {
+            GivenSpecifications(_pass1);
+
+            _reports[0].IndexerId = 2;
+            _reports[0].Indexer = "Indexer1";
+
+            Subject.GetRssDecision(_reports).ToList();
+
+            _remoteEpisode.Indexer.Id.Should().Be(2);
+        }
+
+        [Test]
+        public void should_set_indexer_by_name_if_release_has_no_indexer_id()
+        {
+            GivenSpecifications(_pass1);
+
+            _reports[0].Indexer = "Indexer2";
+
+            Subject.GetRssDecision(_reports).ToList();
+
+            _remoteEpisode.Indexer.Id.Should().Be(2);
+        }
+
+        [Test]
+        public void should_not_set_indexer_if_indexer_id_does_not_exist()
+        {
+            GivenSpecifications(_pass1);
+
+            _reports[0].IndexerId = 3;
+            _reports[0].Indexer = "Indexer1";
+
+            Subject.GetRssDecision(_reports).ToList();
+
+            _remoteEpisode.Indexer.Should().BeNull();
         }
 
         [Test]

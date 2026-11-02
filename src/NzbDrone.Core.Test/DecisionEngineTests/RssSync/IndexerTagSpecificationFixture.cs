@@ -1,9 +1,7 @@
 ﻿using System.Collections.Generic;
 using FizzWare.NBuilder;
 using FluentAssertions;
-using Moq;
 using NUnit.Framework;
-using NzbDrone.Core.Datastore;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.DecisionEngine.Specifications.RssSync;
 using NzbDrone.Core.Indexers;
@@ -31,18 +29,9 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.RssSync
         {
             _fakeIndexerDefinition = new IndexerDefinition
             {
+                Id = 1,
                 Tags = new HashSet<int>()
             };
-
-            Mocker
-                .GetMock<IIndexerFactory>()
-                .Setup(m => m.Get(It.IsAny<int>()))
-                .Throws(new ModelNotFoundException(typeof(IndexerDefinition), -1));
-
-            Mocker
-                .GetMock<IIndexerFactory>()
-                .Setup(m => m.Get(1))
-                .Returns(_fakeIndexerDefinition);
 
             _specification = Mocker.Resolve<IndexerTagSpecification>();
 
@@ -65,7 +54,8 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.RssSync
             {
                 Series = _fakeSeries,
                 Episodes = doubleEpisodeList,
-                Release = _fakeRelease
+                Release = _fakeRelease,
+                Indexer = _fakeIndexerDefinition
             };
         }
 
@@ -130,6 +120,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests.RssSync
             _fakeIndexerDefinition.Tags = new HashSet<int> { 456 };
             _fakeSeries.Tags = new HashSet<int> { 123, 789 };
             _fakeRelease.IndexerId = 2;
+            _parseResultMulti.Indexer = null;
 
             _specification.IsSatisfiedBy(_parseResultMulti, new ReleaseDecisionInformation(false, new SingleEpisodeSearchCriteria { MonitoredEpisodesOnly = true })).Accepted.Should().BeTrue();
         }

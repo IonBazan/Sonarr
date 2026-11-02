@@ -4,6 +4,7 @@ using System.Linq;
 using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DataAugmentation.Scene;
 using NzbDrone.Core.Download.Clients;
+using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.Tv;
 
@@ -12,6 +13,7 @@ namespace NzbDrone.Core.Parser.Model
     public class RemoteEpisode
     {
         public ReleaseInfo Release { get; set; }
+        public IndexerDefinition Indexer { get; set; }
         public ParsedEpisodeInfo ParsedEpisodeInfo { get; set; }
         public SceneMapping SceneMapping { get; set; }
         public int? MappedSeasonNumber { get; set; }
