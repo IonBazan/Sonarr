@@ -25,21 +25,29 @@ export default function EpisodeFileProvider({
   );
 }
 
-function useEpisodeFileFromContext(id: number | undefined) {
-  const episodeFiles = useContext(EpisodeFileContext);
+function useEpisodeFileFromQuery(id: number | undefined) {
+  const { data } = useEpisodeFiles({ episodeFileIds: id ? [id] : [] });
 
-  return useMemo(() => findById(episodeFiles, id), [id, episodeFiles]);
+  return data.find((item) => item.id === id);
 }
 
 export function useEpisodeFile(id: number | undefined) {
-  const hasEpisodeFileContext = !!useContext(EpisodeFileContext);
-  const contextEpisodeFile = useEpisodeFileFromContext(id);
+  const episodeFiles = useContext(EpisodeFileContext);
 
-  const { data } = useEpisodeFiles({
-    episodeFileIds: id && !hasEpisodeFileContext ? [id] : [],
-  });
+  // A component is always either inside or outside the provider, so the same
+  // hook runs on every render. Skipping the query inside the provider avoids
+  // an observer per call, which adds up to tens of thousands on long series.
+  const useFallback = episodeFiles ? useNoQuery : useEpisodeFileFromQuery;
+  const queriedEpisodeFile = useFallback(id);
 
-  return contextEpisodeFile ?? data.find((item) => item.id === id);
+  return useMemo(
+    () => (episodeFiles ? findById(episodeFiles, id) : queriedEpisodeFile),
+    [episodeFiles, id, queriedEpisodeFile]
+  );
+}
+
+function useNoQuery(_id: number | undefined): EpisodeFile | undefined {
+  return undefined;
 }
 
 export interface SeriesEpisodeFile {
