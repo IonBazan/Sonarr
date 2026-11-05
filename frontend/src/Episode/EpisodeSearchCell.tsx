@@ -76,16 +76,18 @@ function EpisodeSearchCell({
         onPress={setDetailsModalOpen}
       />
 
-      <EpisodeDetailsModal
-        isOpen={isDetailsModalOpen}
-        episodeId={episodeId}
-        episodeEntity={episodeEntity}
-        seriesId={seriesId}
-        episodeTitle={episodeTitle}
-        selectedTab="search"
-        startInteractiveSearch={true}
-        onModalClose={setDetailsModalClosed}
-      />
+      {isDetailsModalOpen ? (
+        <EpisodeDetailsModal
+          isOpen={true}
+          episodeId={episodeId}
+          episodeEntity={episodeEntity}
+          seriesId={seriesId}
+          episodeTitle={episodeTitle}
+          selectedTab="search"
+          startInteractiveSearch={true}
+          onModalClose={setDetailsModalClosed}
+        />
+      ) : null}
     </TableRowCell>
   );
 }

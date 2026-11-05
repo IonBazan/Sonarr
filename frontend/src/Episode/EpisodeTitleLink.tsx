@@ -31,12 +31,14 @@ function EpisodeTitleLink(props: EpisodeTitleLinkProps) {
 
       {finaleType ? <FinaleType finaleType={finaleType} /> : null}
 
-      <EpisodeDetailsModal
-        isOpen={isDetailsModalOpen}
-        episodeTitle={episodeTitle}
-        {...otherProps}
-        onModalClose={handleModalClose}
-      />
+      {isDetailsModalOpen ? (
+        <EpisodeDetailsModal
+          isOpen={true}
+          episodeTitle={episodeTitle}
+          {...otherProps}
+          onModalClose={handleModalClose}
+        />
+      ) : null}
     </div>
   );
 }

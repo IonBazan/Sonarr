@@ -4,6 +4,7 @@ import React, {
   useContext,
   useMemo,
 } from 'react';
+import findById from 'Utilities/Array/findById';
 import { EpisodeFile } from './EpisodeFile';
 import useEpisodeFiles, { EpisodeFileFilter } from './useEpisodeFiles';
 
@@ -27,13 +28,7 @@ export default function EpisodeFileProvider({
 function useEpisodeFileFromContext(id: number | undefined) {
   const episodeFiles = useContext(EpisodeFileContext);
 
-  return useMemo(() => {
-    if (id === undefined) {
-      return undefined;
-    }
-
-    return episodeFiles?.find((item) => item.id === id);
-  }, [id, episodeFiles]);
+  return useMemo(() => findById(episodeFiles, id), [id, episodeFiles]);
 }
 
 export function useEpisodeFile(id: number | undefined) {

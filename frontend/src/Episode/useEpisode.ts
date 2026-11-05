@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import { PagedQueryResponse } from 'Helpers/Hooks/usePagedApiQuery';
 import { CalendarItem } from 'typings/Calendar';
+import findById from 'Utilities/Array/findById';
 import Episode from './Episode';
 
 export type EpisodeEntity =
@@ -72,17 +73,13 @@ const useEpisode = (
 
   if (episodeEntity === 'calendar') {
     return queryKey
-      ? queryClient
-          .getQueryData<CalendarItem[]>(queryKey)
-          ?.find((e) => e.id === episodeId)
+      ? findById(queryClient.getQueryData<CalendarItem[]>(queryKey), episodeId)
       : undefined;
   }
 
   if (episodeEntity === 'episodes') {
     return queryKey
-      ? queryClient
-          .getQueryData<Episode[]>(queryKey)
-          ?.find((e) => e.id === episodeId)
+      ? findById(queryClient.getQueryData<Episode[]>(queryKey), episodeId)
       : undefined;
   }
 
@@ -91,9 +88,11 @@ const useEpisode = (
     episodeEntity === 'wanted.missing'
   ) {
     return queryKey
-      ? queryClient
-          .getQueryData<PagedQueryResponse<Episode>>(queryKey)
-          ?.records?.find((e) => e.id === episodeId)
+      ? findById(
+          queryClient.getQueryData<PagedQueryResponse<Episode>>(queryKey)
+            ?.records,
+          episodeId
+        )
       : undefined;
   }
 
