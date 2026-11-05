@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppDimension } from 'App/appStore';
 import CommandNames from 'Commands/CommandNames';
-import { useCommands, useExecuteCommand } from 'Commands/useCommands';
+import {
+  useCommands,
+  useExecuteCommand,
+  useSearchingEpisodeIds,
+} from 'Commands/useCommands';
 import Icon from 'Components/Icon';
 import Label from 'Components/Label';
 import IconButton from 'Components/Link/IconButton';
@@ -116,6 +120,7 @@ function SeriesDetailsSeason({
   onExpandPress,
 }: SeriesDetailsSeasonProps) {
   const executeCommand = useExecuteCommand();
+  const searchingEpisodeIds = useSearchingEpisodeIds();
   const { monitored: seriesMonitored, path } = useSingleSeries(seriesId)!;
   const { data: items } = useSeasonEpisodes(seriesId, seasonNumber);
   const renderedCount = useChunkedCount(items.length, !!isExpanded);
@@ -549,6 +554,7 @@ function SeriesDetailsSeason({
                       <EpisodeRow
                         key={item.id}
                         columns={columns}
+                        isSearching={searchingEpisodeIds.has(item.id)}
                         {...item}
                         isSaving={
                           isToggling && togglingEpisodeIds.includes(item.id)

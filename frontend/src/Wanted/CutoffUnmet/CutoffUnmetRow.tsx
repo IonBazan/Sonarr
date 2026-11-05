@@ -32,6 +32,7 @@ interface CutoffUnmetRowProps {
   lastSearchTime?: string;
   title: string;
   columns: Column[];
+  isSearching: boolean;
 }
 
 function CutoffUnmetRow({
@@ -49,6 +50,7 @@ function CutoffUnmetRow({
   lastSearchTime,
   title,
   columns,
+  isSearching,
 }: CutoffUnmetRowProps) {
   const series = useSingleSeries(seriesId);
   const { toggleSelected, useIsSelected } = useSelect<Episode>();
@@ -173,6 +175,7 @@ function CutoffUnmetRow({
           return (
             <EpisodeSearchCell
               key={name}
+              isSearching={isSearching}
               episodeId={id}
               seriesId={series.id}
               seriesTitle={series.title}

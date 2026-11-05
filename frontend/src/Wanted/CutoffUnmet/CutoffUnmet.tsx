@@ -8,7 +8,11 @@ import React, {
 import QueueDetailsProvider from 'Activity/Queue/Details/QueueDetailsProvider';
 import { SelectProvider, useSelect } from 'App/Select/SelectContext';
 import CommandNames from 'Commands/CommandNames';
-import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
+import {
+  useCommandExecuting,
+  useExecuteCommand,
+  useSearchingEpisodeIds,
+} from 'Commands/useCommands';
 import Alert from 'Components/Alert';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import FilterMenu from 'Components/Menu/FilterMenu';
@@ -62,6 +66,7 @@ function getMonitoredValue(
 
 function CutoffUnmetContent() {
   const executeCommand = useExecuteCommand();
+  const searchingEpisodeIds = useSearchingEpisodeIds();
 
   const {
     records,
@@ -321,6 +326,7 @@ function CutoffUnmetContent() {
                       <CutoffUnmetRow
                         key={item.id}
                         columns={columns}
+                        isSearching={searchingEpisodeIds.has(item.id)}
                         {...item}
                       />
                     );

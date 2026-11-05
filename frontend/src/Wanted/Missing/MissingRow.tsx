@@ -30,6 +30,7 @@ interface MissingRowProps {
   lastSearchTime?: string;
   title: string;
   columns: Column[];
+  isSearching: boolean;
 }
 
 function MissingRow({
@@ -47,6 +48,7 @@ function MissingRow({
   lastSearchTime,
   title,
   columns,
+  isSearching,
 }: MissingRowProps) {
   const series = useSingleSeries(seriesId);
   const { toggleSelected, useIsSelected } = useSelect<Episode>();
@@ -155,6 +157,7 @@ function MissingRow({
           return (
             <EpisodeSearchCell
               key={name}
+              isSearching={isSearching}
               episodeId={id}
               seriesId={series.id}
               seriesTitle={series.title}

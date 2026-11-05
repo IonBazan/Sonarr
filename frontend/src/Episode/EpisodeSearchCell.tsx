@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import CommandNames from 'Commands/CommandNames';
-import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
+import { useExecuteCommand } from 'Commands/useCommands';
 import IconButton from 'Components/Link/IconButton';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
@@ -20,6 +20,7 @@ interface EpisodeSearchCellProps {
   seasonNumber: number;
   episodeNumber: number;
   episodeTitle: string;
+  isSearching: boolean;
 }
 
 function EpisodeSearchCell({
@@ -30,11 +31,8 @@ function EpisodeSearchCell({
   seasonNumber,
   episodeNumber,
   episodeTitle,
+  isSearching,
 }: EpisodeSearchCellProps) {
-  const isSearching = useCommandExecuting(CommandNames.EpisodeSearch, {
-    episodeIds: [episodeId],
-  });
-
   const executeCommand = useExecuteCommand();
 
   const [isDetailsModalOpen, setDetailsModalOpen, setDetailsModalClosed] =

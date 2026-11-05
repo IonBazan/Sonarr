@@ -13,6 +13,7 @@ import {
   SUCCESS,
 } from 'Helpers/Props/messageTypes';
 import { isSameCommand } from 'Utilities/Command';
+import CommandNames from './CommandNames';
 
 const DEFAULT_COMMANDS: Command[] = [];
 const COMMAND_REFETCH_INTERVAL = 5 * 60 * 1000;
@@ -168,6 +169,28 @@ export const useCommandExecuting = (
   return command
     ? command.status === 'queued' || command.status === 'started'
     : false;
+};
+
+// One subscription per table instead of one per row, since every row
+// subscribing to commands makes each command update re-render thousands of rows.
+export const useSearchingEpisodeIds = () => {
+  const { data: commands } = useCommands();
+
+  return useMemo(() => {
+    const episodeIds = new Set<number>();
+
+    commands.forEach((command) => {
+      if (
+        command.name === CommandNames.EpisodeSearch &&
+        (command.status === 'queued' || command.status === 'started') &&
+        'episodeIds' in command.body
+      ) {
+        command.body.episodeIds.forEach((id) => episodeIds.add(id));
+      }
+    });
+
+    return episodeIds;
+  }, [commands]);
 };
 
 export const useExecutingCommands = () => {

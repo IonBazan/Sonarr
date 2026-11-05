@@ -51,6 +51,7 @@ interface EpisodeRowProps {
   // indexerFlags?: number;
   mediaInfo?: MediaInfoModel;
   columns: Column[];
+  isSearching: boolean;
   onMonitorEpisodePress: (
     episodeId: number,
     value: boolean,
@@ -83,6 +84,7 @@ function EpisodeRow({
   // customFormatScore,
   // indexerFlags = 0,
   columns,
+  isSearching,
   onMonitorEpisodePress,
 }: EpisodeRowProps) {
   const {
@@ -307,6 +309,7 @@ function EpisodeRow({
           return (
             <EpisodeSearchCell
               key={name}
+              isSearching={isSearching}
               episodeId={id}
               episodeEntity="episodes"
               seriesId={seriesId}
