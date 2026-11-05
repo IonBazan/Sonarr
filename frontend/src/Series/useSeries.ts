@@ -608,6 +608,20 @@ export const FILTER_BUILDER: FilterBuilderProp<Series>[] = [
 
 const DEFAULT_SERIES: Series[] = [];
 
+// Every episode row reads the series, so share one map instead of building one per row.
+const seriesMaps = new WeakMap<ReadonlyArray<Series>, Map<number, Series>>();
+
+function getSeriesMap(data: ReadonlyArray<Series>) {
+  let seriesMap = seriesMaps.get(data);
+
+  if (!seriesMap) {
+    seriesMap = new Map(data.map((series) => [series.id, series]));
+    seriesMaps.set(data, seriesMap);
+  }
+
+  return seriesMap;
+}
+
 const useSeries = () => {
   const { data, ...result } = useApiQuery<Series[]>({
     path: '/series',
@@ -617,13 +631,7 @@ const useSeries = () => {
     },
   });
 
-  const seriesMap = useMemo(() => {
-    if (!data) {
-      return new Map<number, Series>();
-    }
-
-    return new Map<number, Series>(data.map((series) => [series.id, series]));
-  }, [data]);
+  const seriesMap = getSeriesMap(data ?? DEFAULT_SERIES);
 
   return {
     ...result,
