@@ -24,6 +24,7 @@ import {
 } from 'Episode/episodeOptionsStore';
 import { getQueryKey, useToggleEpisodesMonitored } from 'Episode/useEpisode';
 import { useSeasonEpisodes } from 'Episode/useEpisodes';
+import useChunkedCount from 'Helpers/Hooks/useChunkedCount';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { align, icons, tooltipPositions } from 'Helpers/Props';
 import { SortDirection } from 'Helpers/Props/sortDirections';
@@ -117,6 +118,7 @@ function SeriesDetailsSeason({
   const executeCommand = useExecuteCommand();
   const { monitored: seriesMonitored, path } = useSingleSeries(seriesId)!;
   const { data: items } = useSeasonEpisodes(seriesId, seasonNumber);
+  const renderedCount = useChunkedCount(items.length, !!isExpanded);
 
   const { columns, sortKey, sortDirection } = useEpisodeOptions();
 
@@ -542,7 +544,7 @@ function SeriesDetailsSeason({
                 onTableOptionChange={handleTableOptionChange}
               >
                 <TableBody>
-                  {items.map((item) => {
+                  {items.slice(0, renderedCount).map((item) => {
                     return (
                       <EpisodeRow
                         key={item.id}

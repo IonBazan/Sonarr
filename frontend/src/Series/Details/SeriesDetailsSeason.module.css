@@ -1,5 +1,8 @@
 .season {
   overflow: hidden;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+
   margin-bottom: 16px;
   border: 1px solid var(--borderColor);
   border-radius: 12px;

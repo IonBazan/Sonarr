@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { memo, useCallback } from 'react';
 import Icon from 'Components/Icon';
 import MonitorToggleButton from 'Components/MonitorToggleButton';
 import RelativeDateCell from 'Components/Table/Cells/RelativeDateCell';
@@ -324,4 +324,4 @@ function EpisodeRow({
   );
 }
 
-export default EpisodeRow;
+export default memo(EpisodeRow);
